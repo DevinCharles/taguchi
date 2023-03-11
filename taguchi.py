@@ -31,6 +31,7 @@ class taguchi(object):
         # Handle confirmation runs?
         # Create csv/io to make manual experiments easy (data collection)
     # Data storage? HDF5? CSV?
+    # Weird that .results is a method by .setup is a dataframe?
     
     def __init__(self, inputs, objective, ntrials=1):
         assert isinstance(inputs,dict)
@@ -85,8 +86,42 @@ class taguchi(object):
             trial_labels = 'y'
         df_r = pd.DataFrame(np.zeros([n_runs,n_trials]),columns=trial_labels)
         
+        self.setup = df
+        self._results = pd.concat([df['array'],df_r],axis=1)
         
-        self.results = pd.concat([df['array'],df_r],axis=1)
+    def results(self,data=None):
+        if data is not None:
+            if isinstance(data,pd.DataFrame):
+                self._results.iloc[:,:] = data.values
+                self.calc_SNs()
+            elif isinstance(data,np.ndarray):
+                if len(data.shape) < 2:
+                    data = np.atleast_2d(data).T
+                self._results.iloc[:,:] = data
+                self.calc_SNs()
+            else:
+                print('Please provide an array or dataframe of shape',self._results.shape)
+        else:
+            return self._results
+        
+    def calc_SNs(self):
+        out_table = []
+        for level in range(0,self.n_levels):
+            temp = {}
+            for param in self.setup.columns:
+                ind = self.setup.loc['array'][param] == self.setup.loc['inputs'][param][level]
+                value = self.SN(self._results[ind],self.obj)
+                temp.update({param:value})
+            out_table.append(temp)
+        self.setup.loc['SN'] = pd.DataFrame(out_table).values
+        values = (self.setup.loc['SN'].max() - self.setup.loc['SN'].min()).values
+        self.setup.loc['SN_range'] = values
+        self.setup.loc['SN_rank'] = (len(values)-values.argsort().argsort()-1)
+        
+        optimal = {col:self.setup.loc['inputs'][col][row] for col,row in self.setup.loc['SN'].idxmax().items()}
+        opt_idx = pd.MultiIndex.from_product([['optimal'],[len(self.setup.loc['array'])]])
+        df_opt = pd.DataFrame(optimal,index=[0]).set_index(opt_idx)
+        self.setup = pd.concat([self.setup,df_opt])
         
     def SN(self,y,objective):
         '''
