@@ -1,6 +1,7 @@
 #!/bin/python
 
 import numpy as np
+import pandas as pd
 
 class taguchi(object):
     '''
@@ -23,10 +24,56 @@ class taguchi(object):
 	ntrials : int = 1
 	The number of trials to be run (repeats of the experiment, possibly with varying noise levels).
     '''
-
     
+    ##TODO##
+    # Handle the dictionary input (maybe pandas in put directly too?)
+    # Idea for output name was to be able to have multiple selectible inputs... is this really necessary?
+    # Handle confirmation runs?
+    # Maybe some hooks to functions that "run" the experiments?
+        # Pass data between this class an run functions
+    # Data storage? HDF5? CSV?
+    # Plotting functions for results
+    # Need to handle number of trials
+    # Handle dissimilar number of levels
+    # Tests
+    
+    def __init__(self, inputs, objective, output='y', ntrials=1):
+        assert isinstance(inputs,dict)
+        assert isinstance(objective,str)
+        assert isinstance(output,str)
+        assert isinstance(ntrials,int)
+        
+    n_levels = max([len(p) for p in inputs.values()])
+    n_params = len(inputs)
+    n_trials = ntrials if isinstance(ntrials,int) else len(ntrials)
+    
+    self.n_levels,self.n_params,self.n_trial,self.obj = n_levels,n_params,n_trials,objective
+    
+    def SN(self,y,objective):
+        '''
+        Calculates the signal-to-noise ratio for the output for a minimization, maximization, or target value objective.
+        '''
+        
+        def calc(y,objective):
+            # Minimize Objective
+            if 'min' in objective.lower():
+                return -10*np.log10(np.sum(y**2/len(y)))
+            # Maximize Objective
+            elif 'max' in objective.lower():
+                return -10*np.log10(np.sum(1/y**2)/len(y))
+            # Target Value Objective
+            elif 'tar' in objective.lower():
+                y_bar = np.mean(y)
+                s_sqrd = np.sum(y-y_bar)/(len(y)-1)
+                return -10*np.log10(y_bar**2/s_sqrd)
+        
+        if isinstance(y,pd.DataFrame):
+            y = y.T
+            return calc(y,objective).T.mean()
+        else:
+            return calc(y,objective)
 
-	def array(Q, N):
+	def oarray(Q, N):
 	    ''' 
 	    Q is the number of the levels;
 	    N is the  number of the factors (the columns);
