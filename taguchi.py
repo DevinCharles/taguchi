@@ -43,11 +43,29 @@ class taguchi(object):
         assert isinstance(output,str)
         assert isinstance(ntrials,int)
         
-    n_levels = max([len(p) for p in inputs.values()])
-    n_params = len(inputs)
-    n_trials = ntrials if isinstance(ntrials,int) else len(ntrials)
-    
-    self.n_levels,self.n_params,self.n_trial,self.obj = n_levels,n_params,n_trials,objective
+        n_levels = max([len(p) for p in inputs.values()])
+        n_params = len(inputs)
+        n_trials = ntrials if isinstance(ntrials,int) else len(ntrials)
+        
+        ## Create Taguchi Orthogonal Array ##
+        ta = self.oarray(n_levels,n_params)
+        n_runs = len(ta)
+        
+        self.n_levels = n_levels
+        self.n_params = n_params
+        self.n_runs = n_runs
+        self.n_trials = n_trials
+        self.obj = objective
+        
+        ## Create Multi Index DataFrame ##
+        indexs = ['inputs','SN']
+        levels = range(0,n_levels)
+        midx = pd.MultiIndex.from_product([indexs,levels])
+        df = pd.DataFrame(
+            np.zeros([len(midx),n_params]),
+            columns=inputs.keys(),
+            index=midx
+        )
     
     def SN(self,y,objective):
         '''
