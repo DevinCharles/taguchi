@@ -17,30 +17,24 @@ class taguchi(object):
 	   
 	objective : str
 	A string value determining the optimization objective, either: min, max, or target
-
-	output : str = 'y'
-	A string name of the output parameter.
 	
 	ntrials : int = 1
 	The number of trials to be run (repeats of the experiment, possibly with varying noise levels).
     '''
     
     ##TODO##
-    # Handle the dictionary input (maybe pandas in put directly too?)
-    # Idea for output name was to be able to have multiple selectible inputs... is this really necessary?
-    # Handle confirmation runs?
+    # Handle dissimilar number of levels
+    # Plotting functions for results
+    # Tests
     # Maybe some hooks to functions that "run" the experiments?
         # Pass data between this class an run functions
+        # Handle confirmation runs?
+        # Create csv/io to make manual experiments easy (data collection)
     # Data storage? HDF5? CSV?
-    # Plotting functions for results
-    # Need to handle number of trials
-    # Handle dissimilar number of levels
-    # Tests
     
-    def __init__(self, inputs, objective, output='y', ntrials=1):
+    def __init__(self, inputs, objective, ntrials=1):
         assert isinstance(inputs,dict)
         assert isinstance(objective,str)
-        assert isinstance(output,str)
         assert isinstance(ntrials,int)
         
         n_levels = max([len(p) for p in inputs.values()])
@@ -60,13 +54,40 @@ class taguchi(object):
         ## Create Multi Index DataFrame ##
         indexs = ['inputs','SN']
         levels = range(0,n_levels)
-        midx = pd.MultiIndex.from_product([indexs,levels])
-        df = pd.DataFrame(
-            np.zeros([len(midx),n_params]),
-            columns=inputs.keys(),
-            index=midx
-        )
-    
+        
+        midx_i = pd.MultiIndex.from_product([indexs,levels])
+        midx_s = pd.MultiIndex.from_product([['SN_range','SN_rank'],[0]])
+        midx_a = pd.MultiIndex.from_product([['array'],range(0,n_runs)])
+        
+        df = pd.concat(
+            [
+                pd.DataFrame(
+                    np.zeros([len(midx),n_params]),
+                    columns=inputs.keys(),
+                    index=midx,
+                )
+            for midx in [midx_i,midx_s,midx_a]]   
+        ,axis=1)
+        
+        # Populate input section of datafame
+        df.loc['inputs'] = pd.DataFrame(inputs).values
+        
+        # Populate array section of dataframe
+        ary = []
+        for n in range(0,n_params):
+            X.append(df.loc['inputs'].iloc[ta[:,n],n])
+        df.loc['array'] = np.array(ary).T
+        
+        # Setup Mutiple trials
+        if n_trials > 1:
+            trial_labels = ['{:s}_{:>02d}'.format('y',i).strip() for i in range(0,n_trials)]
+        else:
+            trial_labels = 'y'
+        df_r = pd.DataFrame(np.zeros([n_runs,n_trials]),columns=trial_labels)
+        
+        
+        self.results = pd.concat([df['array'],df_r],axis=1)
+        
     def SN(self,y,objective):
         '''
         Calculates the signal-to-noise ratio for the output for a minimization, maximization, or target value objective.
