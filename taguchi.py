@@ -24,7 +24,6 @@ class taguchi(object):
     
     ##TODO##
     # Handle dissimilar number of levels
-    # Plotting functions for results
     # Tests
     # Maybe some hooks to functions that "run" the experiments?
         # Pass data between this class an run functions
@@ -122,6 +121,13 @@ class taguchi(object):
         opt_idx = pd.MultiIndex.from_product([['optimal'],[len(self.setup.loc['array'])]])
         df_opt = pd.DataFrame(optimal,index=[0]).set_index(opt_idx)
         self.setup = pd.concat([self.setup,df_opt])
+        
+        
+    def plot(self):
+        df = self.setup.loc['SN']
+        axs = df.plot(subplots=True,layout=(1,df.shape[-1]),sharex=True,sharey=True,figsize=[16,9],ylabel='SN Ratio (dB)');
+        axs = axs.flatten()
+        [ax.set_xlabel(c) for c,ax in zip(df.columns,axs)];
         
     def SN(self,y,objective):
         '''
